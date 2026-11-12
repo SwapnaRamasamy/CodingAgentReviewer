@@ -1,0 +1,48 @@
+flowchart TB
+    User["Developer"] --> UI["Streamlit UI<br/>PR URL, commit, model settings"]
+    UI --> Collector["GitHub REST collector<br/>Verify membership and pin source"]
+    Collector <--> GitHub["GitHub API"]
+    Collector --> Snapshot["Commit-pinned snapshot<br/>Files, diff, changed lines, limitations"]
+
+    subgraph Review["Review workflow"]
+        Supervisor["Deep Agents orchestrator<br/>task and write_todos"]
+        Quality["Quality reviewer"]
+        Security["Security reviewer"]
+        Tests["Tests reviewer<br/>Optional"]
+        Tools["Snapshot tools<br/>read_file and search_code"]
+        Scanners["Static candidates<br/>Ruff, Bandit, conditional pip-audit"]
+        Validate["Validate evidence and changed-line scope<br/>Deduplicate and prioritize"]
+        Report["Report<br/>Findings, errors, limitations"]
+        Supervisor --> Quality
+        Supervisor --> Security
+        Supervisor --> Tests
+        Quality --> Tools
+        Security --> Tools
+        Tests --> Tools
+        Quality --> Validate
+        Security --> Validate
+        Tests --> Validate
+        Scanners --> Validate
+        Validate --> Report
+    end
+
+    Snapshot --> Supervisor
+    Snapshot --> Tools
+    Snapshot --> Scanners
+    Supervisor -. "model calls" .-> Runtime
+    Quality -. "model calls" .-> Runtime
+    Security -. "model calls" .-> Runtime
+    Tests -. "model calls" .-> Runtime
+
+    subgraph Models["Configured model provider"]
+        Runtime["Runtime guards<br/>Call budgets, timeouts, activity"]
+        Ollama["Default: local Ollama<br/>Qwen3.5 4B, CPU, 8K context"]
+        Hosted["Optional: Groq or OpenAI"]
+        Runtime --> Ollama
+        Runtime --> Hosted
+    end
+
+    Report --> UI
+    UI --> Downloads["Download Markdown, JSON, activity"]
+    UI -->|"Explicit Post review button"| Publisher["Posting checks<br/>Open PR, unchanged head, commit membership"]
+    Publisher -->|"COMMENT review at selected SHA"| GitHub
